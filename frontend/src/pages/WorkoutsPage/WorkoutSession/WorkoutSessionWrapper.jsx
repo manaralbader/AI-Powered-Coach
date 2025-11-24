@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWorkout } from '../../../context/WorkoutContext';
 import FeedbackPanel from './FeedbackPanel';
@@ -20,6 +20,7 @@ function WorkoutSessionWrapper() {
   const { state } = useLocation();
   const { startSession, isActive, endSession, level, currentExercise, startTime } = useWorkout();
   const [showSummary, setShowSummary] = useState(false);
+  const sessionEndedRef = useRef(false); // Track if session was explicitly ended
 
   const initial = useMemo(() => ({
     level: state?.level || 'beginner',
@@ -39,13 +40,17 @@ function WorkoutSessionWrapper() {
 
   useEffect(() => {
     return () => {
-      if (isActive) {
+      // Only call endSession on unmount if session wasn't explicitly ended by user
+      if (isActive && !sessionEndedRef.current) {
+        console.log('⚠️ Component unmounting with active session, ending session...');
         endSession();
       }
     };
   }, [isActive, endSession]);
 
   const onEnd = () => {
+    console.log('✅ User explicitly ended session');
+    sessionEndedRef.current = true; // Mark that user explicitly ended the session
     endSession();
     setShowSummary(true);
   };
@@ -77,5 +82,6 @@ function WorkoutSessionWrapper() {
 }
 
 export default WorkoutSessionWrapper;
+
 
 
