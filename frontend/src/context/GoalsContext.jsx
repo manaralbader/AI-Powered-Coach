@@ -68,33 +68,79 @@ export const GoalsProvider = ({ children }) => {
     };
 
     // Load weight history
-    const unsubscribeHistory = onSnapshot(
-      query(
-        collection(db, 'weightHistory', uid, 'entries'),
-        orderBy('createdAt', 'desc'),
-        limit(7)
-      ),
-      (snapshot) => {
-        const history = snapshot.docs.map(doc => ({
-          date: doc.data().recordedDate || doc.data().createdAt?.toDate()?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
-          weight: doc.data().weight
-        }));
-        setWeightHistory(history);
-        setLoading(false);
-        
-        // Also save to localStorage as backup
-        localStorage.setItem('weightHistory', JSON.stringify(history));
-      },
-      (error) => {
-        console.error('Error loading weight history:', error);
-        setLoading(false);
-      }
-    );
+    let unsubscribeHistory;
+    
+    try {
+      unsubscribeHistory = onSnapshot(
+        query(
+          collection(db, 'weightHistory', uid, 'entries'),
+          orderBy('createdAt', 'desc'),
+          limit(7)
+        ),
+        (snapshot) => {
+          const history = snapshot.docs.map(doc => ({
+            date: doc.data().recordedDate || doc.data().createdAt?.toDate()?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+            weight: doc.data().weight
+          }));
+          setWeightHistory(history);
+          setLoading(false);
+          
+          console.log('📊 Loaded weight history:', history.length, 'entries');
+          
+          // Also save to localStorage as backup
+          localStorage.setItem('weightHistory', JSON.stringify(history));
+        },
+        (error) => {
+          console.error('❌ Error loading weight history:', error);
+          console.error('Error details:', {
+            code: error.code,
+            message: error.message,
+            uid: uid
+          });
+          
+          // If index error, try loading without orderBy
+          if (error.code === 'failed-precondition') {
+            console.log('⚠️ Index missing, trying without orderBy...');
+            // Fallback: load without orderBy
+            onSnapshot(
+              collection(db, 'weightHistory', uid, 'entries'),
+              (snapshot) => {
+                const history = snapshot.docs
+                  .map(doc => ({
+                    date: doc.data().recordedDate || doc.data().createdAt?.toDate()?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+                    weight: doc.data().weight,
+                    createdAt: doc.data().createdAt
+                  }))
+                  .sort((a, b) => {
+                    // Sort by date descending
+                    return new Date(b.date) - new Date(a.date);
+                  })
+                  .slice(0, 7);
+                
+                setWeightHistory(history);
+                setLoading(false);
+                localStorage.setItem('weightHistory', JSON.stringify(history));
+              },
+              (fallbackError) => {
+                console.error('❌ Fallback query also failed:', fallbackError);
+                setLoading(false);
+              }
+            );
+          } else {
+            setLoading(false);
+          }
+        }
+      );
+    } catch (error) {
+      console.error('❌ Error setting up weight history listener:', error);
+      setLoading(false);
+    }
 
     loadGoals();
 
     return () => {
-      unsubscribeHistory();
+      if (unsubscribeHistory) unsubscribeHistory();
+      if (fallbackUnsubscribe) fallbackUnsubscribe();
     };
   }, [isAuthenticated, user?.uid]);
 
@@ -107,8 +153,11 @@ export const GoalsProvider = ({ children }) => {
     const saveToFirestore = async () => {
       try {
         const uid = user.uid;
+        const userEmail = user.email || '';
         await setDoc(doc(db, 'goals', uid), {
           userId: uid,
+          userEmail: userEmail, // Add email to identify the user
+          userName: user.name || '', // Add name if available
           currentWeight: currentWeight ?? null,
           goalWeight: goalWeight ?? null,
           initialWeight: initialWeight ?? null,
@@ -197,35 +246,37 @@ export const GoalsProvider = ({ children }) => {
     
     setCurrentWeight(weightValue);
     
-    // Add to weight history if date is provided
-    if (date && isAuthenticated && user?.uid) {
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-      const entryDate = date || today;
-      
-      // Update local state
-      setWeightHistory(prev => {
-        // Remove any existing entry for this date
-        const filtered = prev.filter(entry => entry.date !== entryDate);
-        // Add new entry and keep only last 7 days
-        return [...filtered, { date: entryDate, weight: weightValue }].slice(-7);
-      });
+    // Always use today's date if no date provided, or use provided date
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const entryDate = date || today;
+    
+    // Update local state
+    setWeightHistory(prev => {
+      // Remove any existing entry for this date
+      const filtered = prev.filter(entry => entry.date !== entryDate);
+      // Add new entry and keep only last 7 days
+      return [...filtered, { date: entryDate, weight: weightValue }].slice(-7);
+    });
 
-      // Save to Firestore
+    // Save to Firestore if authenticated
+    if (isAuthenticated && user?.uid) {
       try {
+        console.log('💾 Saving weight entry to Firestore:', { weight: weightValue, date: entryDate, uid: user.uid });
         await addDoc(collection(db, 'weightHistory', user.uid, 'entries'), {
           weight: weightValue,
           recordedDate: entryDate,
           createdAt: serverTimestamp()
         });
+        console.log('✅ Weight entry saved successfully');
       } catch (error) {
-        console.error('Error saving weight entry to Firestore:', error);
+        console.error('❌ Error saving weight entry to Firestore:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          uid: user.uid
+        });
+        // Still update local state even if Firestore save fails
       }
-    } else if (date) {
-      // Just update local state if not authenticated
-      setWeightHistory(prev => {
-        const filtered = prev.filter(entry => entry.date !== date);
-        return [...filtered, { date, weight: weightValue }].slice(-7);
-      });
     }
   };
 
