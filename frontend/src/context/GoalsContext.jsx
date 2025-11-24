@@ -140,7 +140,6 @@ export const GoalsProvider = ({ children }) => {
 
     return () => {
       if (unsubscribeHistory) unsubscribeHistory();
-      if (fallbackUnsubscribe) fallbackUnsubscribe();
     };
   }, [isAuthenticated, user?.uid]);
 
