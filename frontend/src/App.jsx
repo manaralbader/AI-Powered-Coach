@@ -4,6 +4,7 @@ import { UserProvider } from "./context/UserContext";
 import { ToastProvider } from "./context/ToastContext";
 import SignIn from "./pages/HomePage/SignIn";
 import SignUp from "./pages/HomePage/SignUp";
+import ForgotPassword from "./pages/HomePage/ForgotPassword";
 import ProfileSetup from "./pages/HomePage/ProfileSetup";
 import HomePage from "./pages/HomePage/HomePage";
 import Goals from "./pages/Goals";
@@ -36,6 +37,7 @@ function App(){
               {/* Public routes - no authentication required, no navbar */}
               <Route path="/signin" element={<SignIn />} />
               <Route path="/signup" element={<SignUp />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/profile-setup" element={<ProfileSetup />} />
               
               {/* Root route - redirects based on authentication */}
