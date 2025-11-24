@@ -45,6 +45,9 @@ export const WorkoutProvider = ({ children }) => {
   const [feedbackMessages, setFeedbackMessages] = useState([]);
   const [repCounts, setRepCounts] = useState({ squat: 0, bicepCurl: 0, frontKick: 0, overheadPress: 0, lateralRaise: 0, crunch: 0 });
   const [feedbackCounts, setFeedbackCounts] = useState({ positive: 0, negative: 0 });
+  
+  // Prevent duplicate session saves
+  const isSavingRef = useRef(false);
 
   // Initialize workout history from localStorage (fallback)
   const [workoutHistory, setWorkoutHistory] = useState(() => {
@@ -80,9 +83,12 @@ export const WorkoutProvider = ({ children }) => {
         limit(50)
       ),
       (snapshot) => {
-        const history = snapshot.docs.map(doc => {
+        // Map Firestore documents to workout history
+        const historyMap = new Map();
+        
+        snapshot.docs.forEach(doc => {
           const data = doc.data();
-          return {
+          const workout = {
             id: doc.id,
             exercise: data.exercise || 'Unknown',
             date: data.workoutDate?.toDate()?.toISOString() || data.createdAt?.toDate()?.toISOString() || new Date().toISOString(),
@@ -92,7 +98,16 @@ export const WorkoutProvider = ({ children }) => {
             accuracy: data.accuracy || 0,
             level: data.level || 'beginner'
           };
+          
+          // Use document ID as key to prevent duplicates
+          historyMap.set(doc.id, workout);
         });
+        
+        // Convert map to array and sort by date (newest first)
+        const history = Array.from(historyMap.values()).sort((a, b) => 
+          new Date(b.date) - new Date(a.date)
+        );
+        
         setWorkoutHistory(history);
         
         // Also save to localStorage as backup
@@ -130,6 +145,7 @@ export const WorkoutProvider = ({ children }) => {
   const poseAccuracyRef = useRef(poseAccuracy);
   const levelRef = useRef(level);
   const userRef = useRef(user);
+  const isAuthenticatedRef = useRef(isAuthenticated);
 
   // Keep refs in sync with state
   React.useEffect(() => {
@@ -140,7 +156,8 @@ export const WorkoutProvider = ({ children }) => {
     poseAccuracyRef.current = poseAccuracy;
     levelRef.current = level;
     userRef.current = user;
-  }, [currentExercise, startTime, repCounts, calories, poseAccuracy, level, user]);
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [currentExercise, startTime, repCounts, calories, poseAccuracy, level, user, isAuthenticated]);
 
   // Helper function to map exercise name to repCounts key
   const mapExerciseKey = (ex) => {
@@ -163,6 +180,9 @@ export const WorkoutProvider = ({ children }) => {
       return;
     }
     
+    // Reset saving flag for new session
+    isSavingRef.current = false;
+    
     console.log('Setting currentExercise to:', normalizedExercise);
     setCurrentExercise(normalizedExercise);
     setLevel(normalizedLevel);
@@ -178,6 +198,15 @@ export const WorkoutProvider = ({ children }) => {
   }, []);
 
   const endSession = useCallback(async () => {
+    // Prevent duplicate saves if endSession is called multiple times
+    if (isSavingRef.current) {
+      console.log('⚠️ endSession already in progress, skipping duplicate call');
+      return;
+    }
+    
+    console.log('🏁 endSession called - starting save process');
+    isSavingRef.current = true;
+    
     // Save workout data to history before clearing session
     // Use refs to get latest values without causing recreations
     const exercise = currentExerciseRef.current;
@@ -187,8 +216,19 @@ export const WorkoutProvider = ({ children }) => {
     const accuracy = poseAccuracyRef.current;
     const lvl = levelRef.current;
     const currentUser = userRef.current;
+    const isAuth = isAuthenticatedRef.current;
 
-    if (exercise && start && currentUser?.isAuthenticated && currentUser?.uid) {
+    console.log('🔍 endSession check:', {
+      hasExercise: !!exercise,
+      hasStart: !!start,
+      isAuthenticated: isAuth,
+      hasUserId: !!currentUser?.uid,
+      userId: currentUser?.uid,
+      exercise: exercise,
+      startTime: start
+    });
+
+    if (exercise && start && isAuth && currentUser?.uid) {
       const durationMs = Date.now() - start;
       const workoutData = {
         exercise: exercise.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
@@ -200,17 +240,10 @@ export const WorkoutProvider = ({ children }) => {
         level: lvl
       };
 
-      // Update local state immediately
-      setWorkoutHistory(prev => {
-        const newHistory = [workoutData, ...prev].slice(0, 10); // Keep last 10 workouts
-        // Save to localStorage as backup
-          localStorage.setItem('workoutHistory', JSON.stringify(newHistory));
-        return newHistory;
-      });
-
-      // Save to Firestore
+      // Save to Firestore - the listener will update state automatically
+      // Don't update state here to avoid duplicates
       try {
-        await addDoc(collection(db, 'workouts'), {
+        const docRef = await addDoc(collection(db, 'workouts'), {
           userId: currentUser.uid,
           exercise: workoutData.exercise,
           workoutDate: serverTimestamp(),
@@ -221,12 +254,21 @@ export const WorkoutProvider = ({ children }) => {
           level: workoutData.level,
           createdAt: serverTimestamp()
         });
+        console.log('✅ Workout saved to Firestore with ID:', docRef.id);
       } catch (error) {
-        console.error('Error saving workout to Firestore:', error);
-        // Workout is already saved to localStorage, so we continue
+        console.error('❌ Error saving workout to Firestore:', error);
+        // If Firestore save fails, fallback to localStorage
+        setWorkoutHistory(prev => {
+          const newHistory = [workoutData, ...prev].slice(0, 10);
+          localStorage.setItem('workoutHistory', JSON.stringify(newHistory));
+          return newHistory;
+        });
+      } finally {
+        isSavingRef.current = false;
       }
     } else if (exercise && start) {
       // Save to localStorage only if not authenticated
+      console.log('⚠️ User not authenticated or missing UID, saving to localStorage only');
       const workoutData = {
         exercise: exercise.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
         date: new Date().toISOString(),
@@ -241,6 +283,10 @@ export const WorkoutProvider = ({ children }) => {
         localStorage.setItem('workoutHistory', JSON.stringify(newHistory));
         return newHistory;
       });
+      isSavingRef.current = false;
+    } else {
+      console.log('⚠️ Cannot save workout: missing exercise or start time');
+      isSavingRef.current = false;
     }
 
     setIsActive(false);
@@ -356,3 +402,4 @@ export const WorkoutProvider = ({ children }) => {
 };
 
 export default WorkoutContext;
+
