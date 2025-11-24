@@ -2,7 +2,7 @@ import { createContext, useState, useEffect, useContext } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 
 const UserContext = createContext();
 
@@ -200,6 +200,26 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  // Function to reset password (send password reset email)
+  const resetPassword = async (email) => {
+    try {
+      // Configure where the user should be redirected after resetting password
+      const actionCodeSettings = {
+        // URL you want to redirect back to after password reset
+        // In production, use your actual domain
+        url: window.location.origin + '/signin',
+        // This must be true for email link sign-in
+        handleCodeInApp: false,
+      };
+
+      await sendPasswordResetEmail(auth, email, actionCodeSettings);
+      return { success: true, error: null };
+    } catch (error) {
+      console.error('Password reset error:', error);
+      return { success: false, error };
+    }
+  };
+
   // Function to logout (clear data)
   const logout = async () => {
     try {
@@ -225,6 +245,7 @@ export const UserProvider = ({ children }) => {
       markOnboardingComplete,
       signUp,
       signIn,
+      resetPassword,
       loading,
       isAuthenticated
     }}>
