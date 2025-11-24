@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
+import chatGreeting from '../assets/chat-greeting.png';
+import chatIcon from '../assets/chat-icon.png';
+import chatError from '../assets/chat-error.png';
 
 // API Configuration - Loaded from environment variables
 const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
 const API_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-3-5-haiku-20241022"; // Fastest and cheapest Claude model
-const MAX_TOKENS = 150; // Reduced for faster responses
+const MAX_TOKENS = 130; // Optimized for brief but complete responses
 
-/**
- * FitnessChat Component
- * A simple fitness chatbot that calls the Anthropic API directly from the browser
- */
+
 function FitnessChat() {
   const [userInput, setUserInput] = useState('');
   const [messages, setMessages] = useState([]); // Array of {role: 'user'|'assistant', content: string}
@@ -58,7 +58,7 @@ function FitnessChat() {
         body: JSON.stringify({
           model: MODEL,
           max_tokens: MAX_TOKENS,
-          system: "You are a fitness assistant for AI Powered Coach. Keep responses very brief and actionable (2-3 sentences max). Only discuss fitness, nutrition, weight loss, and exercise. If asked about other topics, politely redirect. Always recommend consulting healthcare professionals for medical advice.",
+          system: "You are a helpful fitness advisor. The user has access to these exercises: Squat, Crunch, Bicep Curl, Front Kick, Overhead Press, and Lateral Raise, available at beginner (15min), intermediate (30min), or advanced (45min) levels. They can also track weight and set goals. When giving advice, mention these exercises naturally if they fit the user's needs, and feel free to suggest other exercises too if the necassry exercises aren't in the app. Ask clarifying questions when helpful (like fitness level). Provide calorie targets when relevant. End responses with a friendly follow-up question like 'Need anything else?' or 'Want more details on any of these?'. Use a warm, conversational tone with suggestions rather than commands. Base advice on fitness science. Keep responses brief (2-5 sentences). Stay focused on fitness, nutrition, and wellness.",
           messages: messagesToSend
         })
       });
@@ -142,25 +142,26 @@ function FitnessChat() {
     <div style={{
       maxWidth: '800px',
       margin: '0 auto',
-      padding: '20px',
+      padding: '0px 20px 20px 20px',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
     }}>
       {/* Header */}
       <div style={{
-        marginBottom: '30px',
+        marginBottom: '15px',
         textAlign: 'center'
       }}>
         <h1 style={{
           fontSize: '2rem',
           fontWeight: 'bold',
-          marginBottom: '10px',
+          margin: '0 0 5px 0',
           color: '#2A7337'
         }}>
           Fitness Chat
         </h1>
         <p style={{
           color: '#666',
-          fontSize: '0.95rem'
+          fontSize: '0.95rem',
+          margin: '0'
         }}>
           Ask me anything about fitness, nutrition, and weight loss!
         </p>
@@ -170,23 +171,37 @@ function FitnessChat() {
       <div style={{
         backgroundColor: 'rgba(255, 255, 255, 0.5)',
         borderRadius: '12px',
-        padding: '20px',
+        padding: '15px',
         minHeight: '300px',
         maxHeight: '500px',
         overflowY: 'auto',
-        marginBottom: '20px',
+        marginBottom: '15px',
         border: '1px solid rgba(42, 115, 55, 0.2)'
       }}>
         {messages.length === 0 && !isLoading && (
           <div style={{
             textAlign: 'center',
-            color: '#999',
-            padding: '40px 20px',
-            fontSize: '0.95rem'
+            padding: '30px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '15px'
           }}>
-            <p style={{ marginBottom: '15px' }}>Start a conversation by typing your fitness question below.</p>
-            <p style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>
-              Example: "What's a good workout routine for beginners?"
+            <img 
+              src={chatGreeting} 
+              alt="Chat Bot Greeting" 
+              style={{
+                maxWidth: '200px',
+                width: '100%',
+                height: 'auto'
+              }}
+            />
+            <p style={{ 
+              color: '#666',
+              fontSize: '0.95rem',
+              margin: 0
+            }}>
+              Hi! I'm your fitness assistant. Ask me anything about fitness, nutrition, and exercise!
             </p>
           </div>
         )}
@@ -198,9 +213,23 @@ function FitnessChat() {
             style={{
               marginBottom: '15px',
               display: 'flex',
-              justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start'
+              justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
+              alignItems: 'flex-start',
+              gap: '10px'
             }}
           >
+            {message.role === 'assistant' && (
+              <img 
+                src={chatIcon} 
+                alt="Chat Bot" 
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  flexShrink: 0
+                }}
+              />
+            )}
             <div style={{
               backgroundColor: message.role === 'user' ? '#2A7337' : 'white',
               color: message.role === 'user' ? 'white' : '#1a1a1a',
@@ -209,7 +238,8 @@ function FitnessChat() {
               maxWidth: '70%',
               wordWrap: 'break-word',
               border: message.role === 'user' ? 'none' : '1px solid rgba(42, 115, 55, 0.3)',
-              lineHeight: '1.5'
+              lineHeight: '1.5',
+              textAlign: 'left'
             }}>
               {message.content}
             </div>
@@ -249,14 +279,33 @@ function FitnessChat() {
         {/* Error Message */}
         {error && (
           <div style={{
-            backgroundColor: '#fee',
-            color: '#c33',
-            padding: '12px 16px',
-            borderRadius: '8px',
+            textAlign: 'center',
+            padding: '20px',
             marginTop: '10px',
-            border: '1px solid #fcc'
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '12px'
           }}>
-            <strong>Error:</strong> {error}
+            <img 
+              src={chatError} 
+              alt="Error" 
+              style={{
+                maxWidth: '150px',
+                width: '100%',
+                height: 'auto'
+              }}
+            />
+            <div style={{
+              color: '#c33',
+              fontSize: '0.9rem',
+              backgroundColor: '#fee',
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: '1px solid #fcc'
+            }}>
+              {error}
+            </div>
           </div>
         )}
       </div>
@@ -265,7 +314,7 @@ function FitnessChat() {
       <div style={{
         display: 'flex',
         gap: '10px',
-        marginBottom: '15px'
+        marginBottom: '10px'
       }}>
         <input
           type="text"
@@ -340,8 +389,8 @@ function FitnessChat() {
 
       {/* Disclaimer */}
       <div style={{
-        marginTop: '30px',
-        padding: '15px',
+        marginTop: '15px',
+        padding: '12px',
         backgroundColor: '#E7F9D0',
         border: '1px solid rgba(42, 115, 55, 0.3)',
         borderRadius: '8px',
