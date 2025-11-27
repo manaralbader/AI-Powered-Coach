@@ -634,7 +634,7 @@ detectOverheadPress(landmarks) {
       
       if (hasWideElbows && this.canGiveFeedback('form')) {
         this.addFeedback('Elbows are too wide. 📐', 'error');
-        if (this.sound) this.sound.play('overhead-press.form2', 'overheadPress', { formError: true });
+        if (this.sound) this.sound.play('overhead-press.form1', 'overheadPress', { formError: true });
         this.markFeedbackGiven('form');
       }
       
@@ -642,21 +642,18 @@ detectOverheadPress(landmarks) {
       if (!hasNarrowElbows && !hasWideElbows) {
         if (this.sound) {
           this.sound.clearFormError('overhead-press.form1', 'overheadPress');
-          this.sound.clearFormError('overhead-press.form2', 'overheadPress');
         }
       }
     } else {
       // Clear errors if not trying to reach rack
       if (this.sound) {
         this.sound.clearFormError('overhead-press.form1', 'overheadPress');
-        this.sound.clearFormError('overhead-press.form2', 'overheadPress');
       }
     }
   } else {
     // Clear form errors when at ground, rack, or lockout positions
     if (this.sound) {
       this.sound.clearFormError('overhead-press.form1', 'overheadPress');
-      this.sound.clearFormError('overhead-press.form2', 'overheadPress');
     }
   }
 }
@@ -760,7 +757,7 @@ detectOverheadPress(landmarks) {
     if (newStage === 'raised' && avgShoulderAngle >= 70) {
       // Check 1: Arms raised too high (above shoulder level)
       // Target range is 80-95° (shoulder level), allow up to 110° for natural variation
-      const raisedTooHigh = avgShoulderAngle > 150;
+      const raisedTooHigh = avgShoulderAngle > 125;
       const tooHighStable = this.isFormErrorStable('lateralRaise.tooHigh', raisedTooHigh);
       if (tooHighStable && this.canGiveFeedback('form')) {
         this.addFeedback('Don\'t raise arms above shoulder level! 📐', 'error');

@@ -52,7 +52,6 @@ export default class SoundFeedback {
       'bicep-curl.form': make('bicep-curl.form.mp3'),
       'front-kick.form': make('front-kick.form.mp3'),
       'overhead-press.form1': make('overhead-press.form1.mp3'),
-      'overhead-press.form2': make('overhead-press.form2.mp3'),
       'lateral-raise.form1': make('lateral-raise.form1.mp3'),
       'lateral-raise.form2': make('lateral-raise.form2.mp3')
     };
