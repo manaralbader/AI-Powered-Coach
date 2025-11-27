@@ -13,7 +13,6 @@ function DemoView() {
     'bicep-curl': 'uO_CNYidOw0',
     'front-kick': 'o5wZm9U-hgQ',
     'lateral-raise': 'kDqklk1ZESo',
-    'crunch': '0t4t3IpiEao',
     'overhead-press': 'B-aVuyhvLHU'
   };
   

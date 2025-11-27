@@ -53,7 +53,7 @@ function mapExerciseKey(ex) {
   if (ex === 'front-kick') return 'frontKick';
   if (ex === 'overhead-press') return 'overheadPress';
   if (ex === 'lateral-raise') return 'lateralRaise';
-  return ex; // 'squat' and 'crunch' stay as is
+  return ex; // 'squat' stays as is
 }
 
 export default StatsPanel;

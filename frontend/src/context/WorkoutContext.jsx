@@ -37,13 +37,12 @@ export const WorkoutProvider = ({ children }) => {
     'bicep-curl': 16,
     'front-kick': 7,
     'overhead-press': 15,
-    'lateral-raise': 16,
-    'crunch': 16.2,
+    'lateral-raise': 16
   };
 
   const [poseAccuracy, setPoseAccuracy] = useState(0);
   const [feedbackMessages, setFeedbackMessages] = useState([]);
-  const [repCounts, setRepCounts] = useState({ squat: 0, bicepCurl: 0, frontKick: 0, overheadPress: 0, lateralRaise: 0, crunch: 0 });
+  const [repCounts, setRepCounts] = useState({ squat: 0, bicepCurl: 0, frontKick: 0, overheadPress: 0, lateralRaise: 0 });
   const [feedbackCounts, setFeedbackCounts] = useState({ positive: 0, negative: 0 });
   
   // Prevent duplicate session saves
@@ -166,7 +165,7 @@ export const WorkoutProvider = ({ children }) => {
     if (ex === 'front-kick') return 'frontKick';
     if (ex === 'overhead-press') return 'overheadPress';
     if (ex === 'lateral-raise') return 'lateralRaise';
-    return ex; // 'squat' and 'crunch' stay as is
+    return ex; // 'squat' stays as is
   };
 
   const startSession = useCallback((exercise, selectedLevel) => {

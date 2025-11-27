@@ -4,7 +4,6 @@ import bicepCurlImg from '../../assets/bicep-curls.png';
 import frontKickImg from '../../assets/front-kick.png';
 import overheadPressImg from '../../assets/overhead-press.png';
 import lateralRaiseImg from '../../assets/lateral-raise.jpg';
-import crunchImg from '../../assets/crunch.png';
 
 function ExerciseMenu() {
   const { state } = useLocation();
@@ -21,8 +20,7 @@ function ExerciseMenu() {
     'bicep-curl': 55,
     'front-kick': 125,
     'overhead-press': 60,
-    'lateral-raise': 55,
-    'crunch': 56
+    'lateral-raise': 55
   };
 
   // Duration multipliers based on level
@@ -46,14 +44,6 @@ function ExerciseMenu() {
       calories: `~${calculateCalories('squat')} cal`,
       targets: 'Quads, Glutes, Hamstrings',
       equipment: 'None (bodyweight)'
-    },
-    {
-      id: 'crunch',
-      name: 'Crunch',
-      image: crunchImg,
-      calories: `~${calculateCalories('crunch')} cal`,
-      targets: 'Abs, Core',
-      equipment: 'Mat recommended'
     },
     {
       id: 'bicep-curl',

@@ -54,11 +54,7 @@ export default class SoundFeedback {
       'overhead-press.form1': make('overhead-press.form1.mp3'),
       'overhead-press.form2': make('overhead-press.form2.mp3'),
       'lateral-raise.form1': make('lateral-raise.form1.mp3'),
-      'lateral-raise.form2': make('lateral-raise.form2.mp3'),
-      'crunch.form1': make('crunch.form1.mp3'),
-      'crunch.form2': make('crunch.form2.mp3'),
-      'crunch.form3': make('crunch.form3.mp3'),
-      'crunch.form4': make('crunch.form4.mp3'),
+      'lateral-raise.form2': make('lateral-raise.form2.mp3')
     };
   }
 

@@ -106,7 +106,6 @@ export default function PoseCamera() {
         updateRepCount('frontKick', detectorRef.current.getRepCount('frontKick'));
         updateRepCount('overheadPress', detectorRef.current.getRepCount('overheadPress'));
         updateRepCount('lateralRaise', detectorRef.current.getRepCount('lateralRaise'));
-        updateRepCount('crunch', detectorRef.current.getRepCount('crunch'));
       }
     }, 500); // Update twice per second
     return () => clearInterval(interval);
@@ -120,8 +119,7 @@ export default function PoseCamera() {
         const exerciseKey = currentExercise === 'bicep-curl' ? 'bicepCurl' : 
                            currentExercise === 'front-kick' ? 'frontKick' : 
                            currentExercise === 'overhead-press' ? 'overheadPress' : 
-                           currentExercise === 'lateral-raise' ? 'lateralRaise' : 
-                           currentExercise === 'crunch' ? 'crunch' : currentExercise;
+                           currentExercise === 'lateral-raise' ? 'lateralRaise' : currentExercise;
         detectorRef.current.reset(exerciseKey);
       }
 
@@ -426,9 +424,6 @@ export default function PoseCamera() {
       case 'lateral-raise':
         checkLateralRaisePosture(landmarks);
         break;
-      case 'crunch':
-        checkCrunchPosture(landmarks);
-        break;
       default:
         console.warn('Unknown exercise:', exercise);
     }
@@ -461,11 +456,6 @@ export default function PoseCamera() {
   const checkLateralRaisePosture = (landmarks) => {
     if (!workoutStartedRef.current || !detectorRef.current) return;
     detectorRef.current.detectLateralRaise(landmarks);
-  };
-
-  const checkCrunchPosture = (landmarks) => {
-    if (!workoutStartedRef.current || !detectorRef.current) return;
-    detectorRef.current.detectCrunch(landmarks);
   };
 
   const cleanup = () => {

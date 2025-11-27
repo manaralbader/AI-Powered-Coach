@@ -10,8 +10,7 @@ export class ExerciseDetector {
       bicepCurl: { stage: 'extended', prevStage: 'extended', count: 0, stableFrames: 0 },
       frontKick: { stage: 'ready', prevStage: 'ready', count: 0, stableFrames: 0 },
       overheadPress: { stage: 'start', prevStage: 'start', count: 0, stableFrames: 0 },
-      lateralRaise: { stage: 'down', prevStage: 'down', count: 0, stableFrames: 0 },
-      crunch: { stage: 'start', prevStage: 'start', count: 0, stableFrames: 0 }
+      lateralRaise: { stage: 'down', prevStage: 'down', count: 0, stableFrames: 0 }
     };
     
     this.repState = {
@@ -19,18 +18,16 @@ export class ExerciseDetector {
       bicepCurl: 'extended',
       frontKick: 'in',
       overheadPress: 'start',
-      lateralRaise: 'down',
-      crunch: 'start'
+      lateralRaise: 'down'
     };
-    this.repStable = { squat: 0, bicepCurl: 0, frontKick: 0, overheadPress: 0, lateralRaise: 0, crunch: 0 };
+    this.repStable = { squat: 0, bicepCurl: 0, frontKick: 0, overheadPress: 0, lateralRaise: 0 };
 
     this.midwayFlags = {
       squat: false,
       bicepCurl: false,
       frontKick: false,
       overheadPress: false,
-      lateralRaise: false,
-      crunch: false
+      lateralRaise: false
     };
 
     this.currentKickSide = null;
@@ -59,8 +56,7 @@ export class ExerciseDetector {
                          exercise === 'bicepCurl' ? 'extended' : 
                          exercise === 'frontKick' ? 'ready' : 
                          exercise === 'overheadPress' ? 'start' : 
-                         exercise === 'lateralRaise' ? 'down' : 
-                         exercise === 'crunch' ? 'start' : 'start';
+                         exercise === 'lateralRaise' ? 'down' : 'start';
       state.stage = initialStage;
       state.prevStage = initialStage;
       state.count = 0;
@@ -87,10 +83,6 @@ export class ExerciseDetector {
       this.repState.lateralRaise = 'down';
       this.repStable.lateralRaise = 0;
       this.midwayFlags.lateralRaise = false;
-    } else if (exercise === 'crunch') {
-      this.repState.crunch = 'start';
-      this.repStable.crunch = 0;
-      this.midwayFlags.crunch = false;
     }
 
     if (this.sound) this.sound.resetExercise(exercise);
@@ -790,176 +782,4 @@ detectOverheadPress(landmarks) {
     }
   }
 
-  // detect crunch
-  detectCrunch(landmarks) {
-    // Get landmarks for both sides
-    const leftShoulder = landmarks[11];
-    const rightShoulder = landmarks[12];
-    const leftHip = landmarks[23];
-    const rightHip = landmarks[24];
-    const leftKnee = landmarks[25];
-    const rightKnee = landmarks[26];
-    const leftAnkle = landmarks[27];
-    const rightAnkle = landmarks[28];
-    const nose = landmarks[0]; // Use nose for head position
-
-    // Visibility gate - core landmarks must be visible
-    const vis = (p, thr = 0.5) => (p && (p.visibility == null || p.visibility >= thr));
-    if (!(vis(leftShoulder) && vis(rightShoulder) && vis(leftHip) && vis(rightHip))) return;
-
-    // Calculate midpoints for robust angle calculation
-    const midShoulder = (leftShoulder && rightShoulder) ? { 
-      x: (leftShoulder.x + rightShoulder.x) / 2, 
-      y: (leftShoulder.y + rightShoulder.y) / 2 
-    } : (leftShoulder || rightShoulder);
-    const midHip = (leftHip && rightHip) ? { 
-      x: (leftHip.x + rightHip.x) / 2, 
-      y: (leftHip.y + rightHip.y) / 2 
-    } : (leftHip || rightHip);
-
-    if (!midShoulder || !midHip) return;
-
-    // KEY ANGLE 1: Torso Angle (lift of torso relative to floor)
-    // 0° = flat on floor, increases as torso lifts
-    const torsoAngleToFloorRaw = this.calculateTorsoAngleToFloor(midShoulder, midHip);
-    const torsoAngle = this.smooth('crunch.torsoToFloor', torsoAngleToFloorRaw, 0.4);
-
-    // KEY ANGLE 2: Knee Angle (bend in the knee)
-    const leftLegOk = vis(leftKnee) && vis(leftAnkle);
-    const rightLegOk = vis(rightKnee) && vis(rightAnkle);
-    let kneeAngleRaw = null;
-    if (leftLegOk && leftHip) {
-      kneeAngleRaw = this.calculateAngle(leftHip, leftKnee, leftAnkle);
-    } else if (rightLegOk && rightHip) {
-      kneeAngleRaw = this.calculateAngle(rightHip, rightKnee, rightAnkle);
-    }
-    const kneeAngle = kneeAngleRaw != null ? this.smooth('crunch.knee', kneeAngleRaw, 0.4) : null;
-
-    // KEY ANGLE 3: Neck Alignment Angle (angle at shoulder between head and hip line)
-    // Use nose for head position, or fallback to ear if nose not visible
-    let headPoint = nose;
-    if (!headPoint || !vis(headPoint)) {
-      // Try using average of ears if nose not available
-      const leftEar = landmarks[7];
-      const rightEar = landmarks[8];
-      if (leftEar && rightEar) {
-        headPoint = { 
-          x: (leftEar.x + rightEar.x) / 2, 
-          y: (leftEar.y + rightEar.y) / 2 
-        };
-      } else {
-        headPoint = leftEar || rightEar;
-      }
-    }
-
-    let neckAlignmentAngleRaw = null;
-    if (headPoint && midShoulder && midHip) {
-      neckAlignmentAngleRaw = this.calculateNeckAlignmentAngle(headPoint, midShoulder, midHip);
-    }
-    const neckAlignmentAngle = neckAlignmentAngleRaw != null 
-      ? this.smooth('crunch.neckAlignment', neckAlignmentAngleRaw, 0.4) 
-      : null;
-
-    // POSE STATE LOGIC: Determine state based on Torso Angle
-    // STARTING: Torso Angle ≤ 5°
-    // CRUNCHING: Torso Angle > 5°
-    let newStage;
-    if (torsoAngle <= 5) {
-      newStage = 'start'; // STARTING state
-    } else {
-      newStage = 'crunching'; // CRUNCHING state
-    }
-
-    if (!this.updateStability('crunch', newStage)) return;
-    const state = this.frameCounts.crunch;
-
-    // REP COUNTING: start -> crunching -> start
-    if (this.repState.crunch === 'start') {
-      if (newStage === 'crunching') {
-        this.repState.crunch = 'crunching';
-      }
-    } else if (this.repState.crunch === 'crunching') {
-      if (newStage === 'start') {
-        state.count++;
-        this.addFeedback(`Rep ${state.count} complete! 🏋️`, 'success');
-        if (this.sound) this.sound.markRep('crunch', state.count);
-        this.markFeedbackGiven('rep');
-        this.repState.crunch = 'start';
-        this.midwayFlags.crunch = false;
-        // Play encouragement every 5 reps
-        if (state.count % 5 === 0 && this.canGiveFeedback('encourage')) {
-          this.addFeedback('Keep it up! 💪', 'info');
-          this.markFeedbackGiven('encourage');
-        }
-      }
-    }
-
-    // Progressive cues (ONCE per rep at midway point)
-    if (newStage === 'crunching' && !this.midwayFlags.crunch && this.canGiveFeedback('encourage')) {
-      this.addFeedback('Crunch up! 🔥', 'info');
-      if (this.sound) this.sound.midwayMaybePlay('crunch');
-      this.markFeedbackGiven('encourage');
-      this.midwayFlags.crunch = true;
-    }
-
-    // FEEDBACK RULES - Check in both states
-    // Rule 1: Neck Alignment Angle (Safety) - Detect neck strain
-    if (neckAlignmentAngle != null) {
-      // Bad: < 130° indicates pulling head forward (neck strain)
-      // Good: >= 130° indicates relaxed, neutral neck
-      const neckStrained = neckAlignmentAngle < 130;
-      const neckStrainStable = this.isFormErrorStable('crunch.neckStrain', neckStrained);
-      if (neckStrainStable && this.canGiveFeedback('form')) {
-        this.addFeedback('Don\'t pull your head forward. Relax your neck.', 'error');
-        if (this.sound) this.sound.play('crunch.form1', 'crunch', { formError: true });
-        this.markFeedbackGiven('form');
-      } else if (!neckStrained) {
-        if (this.sound) this.sound.clearFormError('crunch.form1', 'crunch');
-      }
-    }
-
-    // Rule 2: Lower Back Position - Check in BOTH states (placeholder)
-    // TODO: Implement actual hip lift detection logic if feasible
-    const hipShouldNotLift = true; // Placeholder - always passing for now
-    if (!hipShouldNotLift && this.canGiveFeedback('form')) {
-      this.addFeedback('Keep lower back down.', 'error');
-      if (this.sound) this.sound.play('crunch.form2', 'crunch', { formError: true });
-      this.markFeedbackGiven('form');
-    } else if (hipShouldNotLift) {
-      if (this.sound) this.sound.clearFormError('crunch.form2', 'crunch');
-    }
-
-    // FEEDBACK RULES - Specific to the CRUNCHING state
-    if (newStage === 'crunching') {
-      // Rule 3: Torso Angle - Range of Motion (Shallow)
-      // Minimum Pass: Must be ≥ 10°
-      const shallowRange = torsoAngle < 10;
-      const shallowRangeStable = this.isFormErrorStable('crunch.shallow', shallowRange);
-      if (shallowRangeStable && this.canGiveFeedback('form')) {
-        this.addFeedback('Lift higher for a full contraction.', 'error');
-        if (this.sound) this.sound.play('crunch.form3', 'crunch', { formError: true });
-        this.markFeedbackGiven('form');
-      } else if (torsoAngle >= 10 && torsoAngle <= 40) {
-        if (this.sound) this.sound.clearFormError('crunch.form3', 'crunch');
-      }
-
-      // Rule 4: Torso Angle - Range of Motion (Too High - Full Sit-Up)
-      // Maximum Pass: Must be ≤ 40°
-      const tooHigh = torsoAngle > 40;
-      const tooHighStable = this.isFormErrorStable('crunch.tooHigh', tooHigh);
-      if (tooHighStable && this.canGiveFeedback('form')) {
-        this.addFeedback('Don\'t sit all the way up! Keep it as a crunch.', 'error');
-        if (this.sound) this.sound.play('crunch.form4', 'crunch', { formError: true });
-        this.markFeedbackGiven('form');
-      } else if (torsoAngle <= 40) {
-        if (this.sound) this.sound.clearFormError('crunch.form4', 'crunch');
-      }
-    } else {
-      // Clear form errors when not in crunching state
-      if (this.sound) {
-        this.sound.clearFormError('crunch.form3', 'crunch');
-        this.sound.clearFormError('crunch.form4', 'crunch');
-      }
-    }
-  }
 }
