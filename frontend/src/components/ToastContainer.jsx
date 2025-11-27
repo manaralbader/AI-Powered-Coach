@@ -1,9 +1,14 @@
 import React from 'react';
 import { useToast } from '../context/ToastContext';
 import Toast from './Toast';
+import ModalToast from './ModalToast';
 
 const ToastContainer = () => {
   const { toasts } = useToast();
+
+  // Separate toasts by type
+  const regularToasts = toasts.filter(toast => toast.type !== 'confirm');
+  const confirmToasts = toasts.filter(toast => toast.type === 'confirm');
 
   return (
     <>
@@ -34,7 +39,7 @@ const ToastContainer = () => {
         `}
       </style>
 
-      {/* Toast container positioned at bottom-left */}
+      {/* Regular toast container positioned at bottom-left */}
       <div
         style={{
           position: 'fixed',
@@ -46,12 +51,17 @@ const ToastContainer = () => {
           pointerEvents: 'none'
         }}
       >
-        {toasts.map((toast) => (
+        {regularToasts.map((toast) => (
           <div key={toast.id} style={{ pointerEvents: 'auto' }}>
             <Toast toast={toast} />
           </div>
         ))}
       </div>
+
+      {/* Confirm toasts rendered as centered modals */}
+      {confirmToasts.map((toast) => (
+        <ModalToast key={toast.id} toast={toast} />
+      ))}
     </>
   );
 };
