@@ -343,7 +343,7 @@ export class ExerciseDetector {
         this.repStable.bicepCurl = 0;
       }
     } else if (this.repState.bicepCurl === 'contracted') {
-      if (elbowAngle >= 145 && elbowAngle <= 185 && torsoUpperArmAngle < 55) {
+      if (elbowAngle >= 170 && elbowAngle <= 185 && torsoUpperArmAngle < 55) {
         this.repStable.bicepCurl += 1;
         if (this.repStable.bicepCurl >= this.STABLE_FRAMES) {
           state.count++;
@@ -380,6 +380,17 @@ export class ExerciseDetector {
       if (this.sound) this.sound.play('bicep-curl.form', 'bicepCurl', { formError: true });
       this.markFeedbackGiven('form');
     } else if (!hasElbowDrift) {
+      if (this.sound) this.sound.clearFormError('bicep-curl.form', 'bicepCurl');
+    }
+
+    // form correction: elbow raised too high
+    const hasElbowRaised = elbowAngle < 145 && torsoUpperArmAngle > 50;
+    const elbowRaisedStable = this.isFormErrorStable('bicepCurl.elbowRaised', hasElbowRaised);
+    if (elbowRaisedStable && this.canGiveFeedback('form')) {
+      this.addFeedback('Keep your elbow down! 📍', 'error');
+      if (this.sound) this.sound.play('bicep-curl.form', 'bicepCurl', { formError: true });
+      this.markFeedbackGiven('form');
+    } else if (!hasElbowRaised) {
       if (this.sound) this.sound.clearFormError('bicep-curl.form', 'bicepCurl');
     }
   }
