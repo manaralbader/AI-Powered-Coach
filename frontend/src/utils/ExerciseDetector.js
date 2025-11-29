@@ -8,7 +8,7 @@ export class ExerciseDetector {
     this.frameCounts = {
       squat: { stage: 'standing', prevStage: 'standing', count: 0, stableFrames: 0 },
       bicepCurl: { stage: 'extended', prevStage: 'extended', count: 0, stableFrames: 0 },
-      frontKick: { stage: 'ready', prevStage: 'ready', count: 0, stableFrames: 0 },
+      frontKick: { stage: 'standing', prevStage: 'standing', count: 0, stableFrames: 0 },
       overheadPress: { stage: 'start', prevStage: 'start', count: 0, stableFrames: 0 },
       lateralRaise: { stage: 'down', prevStage: 'down', count: 0, stableFrames: 0 }
     };
@@ -16,7 +16,7 @@ export class ExerciseDetector {
     this.repState = {
       squat: 'standing',
       bicepCurl: 'extended',
-      frontKick: 'in',
+      frontKick: 'standing',
       overheadPress: 'start',
       lateralRaise: 'down'
     };
@@ -31,6 +31,10 @@ export class ExerciseDetector {
     };
 
     this.currentKickSide = null;
+    
+    this.lastRepTime = {
+      frontKick: 0
+    };
 
     this.smoothAngles = Object.create(null);
     this.errorStable = Object.create(null);
@@ -54,7 +58,7 @@ export class ExerciseDetector {
     if (state) {
       const initialStage = exercise === 'squat' ? 'standing' : 
                          exercise === 'bicepCurl' ? 'extended' : 
-                         exercise === 'frontKick' ? 'ready' : 
+                         exercise === 'frontKick' ? 'standing' : 
                          exercise === 'overheadPress' ? 'start' : 
                          exercise === 'lateralRaise' ? 'down' : 'start';
       state.stage = initialStage;
@@ -71,7 +75,7 @@ export class ExerciseDetector {
       this.repStable.bicepCurl = 0;
       this.midwayFlags.bicepCurl = false;
     } else if (exercise === 'frontKick') {
-      this.repState.frontKick = 'in';
+      this.repState.frontKick = 'standing';
       this.repStable.frontKick = 0;
       this.midwayFlags.frontKick = false;
       this.currentKickSide = null;
@@ -166,6 +170,7 @@ export class ExerciseDetector {
 
   updateStability(exercise, newStage) {
     const state = this.frameCounts[exercise];
+    const requiredFrames = this.getRequiredStableFrames(exercise);
     if (state.stage !== newStage) {
       state.prevStage = state.stage;
       state.stage = newStage;
@@ -173,7 +178,7 @@ export class ExerciseDetector {
       return false;
     } else {
       state.stableFrames++;
-      return state.stableFrames >= this.STABLE_FRAMES;
+      return state.stableFrames >= requiredFrames;
     }
   }
 
@@ -397,7 +402,67 @@ export class ExerciseDetector {
 
   // detect front kick
   detectFrontKick(landmarks) {
-    const side = this.pickSide(landmarks);
+    // Check both legs
+    const leftShoulder = landmarks[11];
+    const leftHip = landmarks[23];
+    const leftKnee = landmarks[25];
+    const leftAnkle = landmarks[27];
+    
+    const rightShoulder = landmarks[12];
+    const rightHip = landmarks[24];
+    const rightKnee = landmarks[26];
+    const rightAnkle = landmarks[28];
+
+    // Check if each side has required landmarks
+    const leftOk = leftShoulder && leftHip && leftKnee && leftAnkle;
+    const rightOk = rightShoulder && rightHip && rightKnee && rightAnkle;
+    
+    if (!leftOk && !rightOk) return; // Neither leg visible
+    
+    // Calculate angles for both legs
+    let leftLegAngle = null;
+    let rightLegAngle = null;
+    
+    if (leftOk) {
+      leftLegAngle = this.calculateAngle(leftHip, leftKnee, leftAnkle);
+    }
+    
+    if (rightOk) {
+      rightLegAngle = this.calculateAngle(rightHip, rightKnee, rightAnkle);
+    }
+    
+    // Determine which leg is kicking (the one that's more bent/extended)
+    // If we don't have a current kick side, pick the leg that's more active
+    let side;
+    
+    if (this.currentKickSide === null) {
+      // Initial determination: pick the leg that's more bent (smaller angle)
+      if (leftOk && rightOk) {
+        side = leftLegAngle < rightLegAngle ? 'left' : 'right';
+      } else if (leftOk) {
+        side = 'left';
+      } else {
+        side = 'right';
+      }
+      this.currentKickSide = side;
+    } else {
+      // Stick with current side unless it becomes invalid
+      side = this.currentKickSide;
+      
+      // Switch sides only if current side is not visible OR if opposite leg becomes significantly more active
+      if (side === 'left' && !leftOk && rightOk) {
+        side = 'right';
+        this.currentKickSide = side;
+        this.repState.frontKick = 'standing';
+        this.repStable.frontKick = 0;
+      } else if (side === 'right' && !rightOk && leftOk) {
+        side = 'left';
+        this.currentKickSide = side;
+        this.repState.frontKick = 'standing';
+        this.repStable.frontKick = 0;
+      }
+    }
+    
     const idx = side === 'right' ? { shoulder: 12, hip: 24, knee: 26, ankle: 28 } : { shoulder: 11, hip: 23, knee: 25, ankle: 27 };
     const shoulder = landmarks[idx.shoulder];
     const hip = landmarks[idx.hip];
@@ -410,28 +475,26 @@ export class ExerciseDetector {
     const visOk = [hip, knee, ankle, shoulder].every(p => (p && (p.visibility == null || p.visibility >= 0.35)));
     if (!visOk) return;
 
-    // Side change detection - reset state for clean transition
-    if (this.currentKickSide !== side) {
-      this.repState.frontKick = 'in';
-      this.repStable.frontKick = 0;
-      this.currentKickSide = side;
-    }
-
     const legAngleRaw = this.calculateAngle(hip, knee, ankle);
     const hipAngleRaw = this.calculateAngle(shoulder, hip, knee);
 
     // Use side-specific smoothing keys to prevent data mixing between legs
-    const legAngle = this.smooth(`kick.leg.${side}`, legAngleRaw, 0.7);
-    const hipAngle = this.smooth(`kick.hip.${side}`, hipAngleRaw, 0.7);
+    // Reduced smoothing (0.3) for faster response to quick kicks
+    const legAngle = this.smooth(`kick.leg.${side}`, legAngleRaw, 0.3);
+    const hipAngle = this.smooth(`kick.hip.${side}`, hipAngleRaw, 0.3);
     
     let newStage;
     
     // Determine stage based on leg angle
-    if (legAngle < 90) {
-      newStage = 'ready';
-    } else if (legAngle < 120) {
+    // Standing: leg straight (>145°)
+    // Chambered: leg bent for kick preparation (45-95°)
+    // Extending: transitioning from chamber to full extension (95-115°)
+    // Extended: full kick with leg extended (≥115°)
+    if (legAngle > 145) {
+      newStage = 'standing';
+    } else if (legAngle >= 45 && legAngle <= 95) {
       newStage = 'chambered';
-    } else if (legAngle < 140) {
+    } else if (legAngle > 95 && legAngle < 115) {
       newStage = 'extending';
     } else {
       newStage = 'extended';
@@ -442,48 +505,121 @@ export class ExerciseDetector {
 
     const state = this.frameCounts.frontKick;
 
-    // count reps through in, ready, and out states
-    if (this.repState.frontKick === 'in') {
-      if (legAngle < 60 && hipAngle < 80) {
+    // Rep counting: chamber → extended → chamber = 1 rep
+    // Standing state: user at rest or ready position
+    // Chambered state: leg pulled up, preparing for kick
+    // Extended state: full kick executed
+    // Count rep when returning to chambered from extended
+    
+    if (this.repState.frontKick === 'standing') {
+      // From standing, enter chambered state when leg is bent (45-95°)
+      if (legAngle >= 45 && legAngle <= 95) {
         this.repStable.frontKick += 1;
         if (this.repStable.frontKick >= this.getRequiredStableFrames('frontKick')) {
-          this.repState.frontKick = 'ready';
+          this.repState.frontKick = 'chambered';
           this.repStable.frontKick = 0;
         }
       } else {
         this.repStable.frontKick = 0;
       }
-    } else if (this.repState.frontKick === 'ready') {
-      if (legAngle > 110 && (hipAngle >= 35 && hipAngle <= 150)) {
-        this.repStable.frontKick += 1;
-        if (this.repStable.frontKick >= this.getRequiredStableFrames('frontKick')) {
-          this.repState.frontKick = 'out';
+    } else if (this.repState.frontKick === 'chambered') {
+      // From chambered, enter extended state when leg extends (≥115°)
+      if (legAngle >= 115) {
+        // FORM CHECK: Ensure proper extension - leg angle should be at least 100°
+        // If less than 100°, it's not a proper kick
+        if (legAngle < 100) {
+          // Not a proper kick - don't progress to extended state
           this.repStable.frontKick = 0;
-        }
-      } else {
-        this.repStable.frontKick = 0;
-      }
-    } else if (this.repState.frontKick === 'out') {
-      if (legAngle < 60 && hipAngle < 80) {
-        this.repStable.frontKick += 1;
-        if (this.repStable.frontKick >= this.getRequiredStableFrames('frontKick')) {
-          state.count++;
-          this.addFeedback(`Kick ${state.count} complete! 🥋`, 'success');
-          if (this.sound) this.sound.markRep('frontKick', state.count);
-          this.markFeedbackGiven('rep');
-          this.repState.frontKick = 'in';
-          this.repStable.frontKick = 0;
-          // Reset midway flag when rep completes and user returns to start
-          this.midwayFlags.frontKick = false;
-          // Play encouragement every 5 reps
-          if (state.count % 5 === 0 && this.canGiveFeedback('encourage')) {
-            this.addFeedback('Keep it up! 💪', 'info');
-            this.markFeedbackGiven('encourage');
+          if (this.canGiveFeedback('form')) {
+            this.addFeedback('Extend your leg fully for a proper kick! 🦵', 'error');
+            if (this.sound) this.sound.play('front-kick.form', 'frontKick', { formError: true });
+            this.markFeedbackGiven('form');
+          }
+        } else {
+          this.repStable.frontKick += 1;
+          if (this.repStable.frontKick >= this.getRequiredStableFrames('frontKick')) {
+            this.repState.frontKick = 'extended';
+            this.repStable.frontKick = 0;
           }
         }
       } else {
         this.repStable.frontKick = 0;
       }
+    } else if (this.repState.frontKick === 'extended') {
+      // From extended, return to chambered OR standing to complete rep
+      // Chambered: 45-95° OR Standing: >145°
+      if ((legAngle >= 45 && legAngle <= 95) || legAngle > 145) {
+        this.repStable.frontKick += 1;
+        if (this.repStable.frontKick >= this.getRequiredStableFrames('frontKick')) {
+          // Check cooldown to prevent double-counting
+          const now = Date.now();
+          const timeSinceLastRep = now - (this.lastRepTime.frontKick || 0);
+          
+          // Require at least 300ms between reps to prevent double-counting
+          if (timeSinceLastRep >= 300) {
+            state.count++;
+            this.addFeedback(`Kick ${state.count} complete! 🥋`, 'success');
+            if (this.sound) this.sound.markRep('frontKick', state.count);
+            this.markFeedbackGiven('rep');
+            this.lastRepTime.frontKick = now;
+            
+            // Determine next state based on where leg returned to
+            if (legAngle > 145) {
+              this.repState.frontKick = 'standing';
+            } else {
+              this.repState.frontKick = 'chambered';
+            }
+            this.repStable.frontKick = 0;
+            // Reset midway flag when rep completes
+            this.midwayFlags.frontKick = false;
+            // Play encouragement every 5 reps
+            if (state.count % 5 === 0 && this.canGiveFeedback('encourage')) {
+              this.addFeedback('Keep it up! 💪', 'info');
+              this.markFeedbackGiven('encourage');
+            }
+          } else {
+            // Too soon after last rep, likely a false trigger - reset to standing
+            this.repState.frontKick = 'standing';
+            this.repStable.frontKick = 0;
+          }
+        }
+      } else {
+        this.repStable.frontKick = 0;
+      }
+    }
+    
+    // FORM CHECKS during extended/extending phase
+    if (newStage === 'extended' || newStage === 'extending') {
+      // Check 1: Hip angle too narrow (leg raised too high) - causes lower back strain
+      // Hip angle < 70° means leg is way too high
+      if (hipAngle < 70) {
+        const hipErrorStable = this.isFormErrorStable('frontKick.hipTooNarrow', true);
+        if (hipErrorStable && this.canGiveFeedback('form')) {
+          this.addFeedback('Don\'t raise your leg too high, protect your lower back! ⚠️', 'error');
+          // No sound for this - the audio says "raise kick higher" which would be contradictory
+          this.markFeedbackGiven('form');
+        }
+      } else {
+        this.isFormErrorStable('frontKick.hipTooNarrow', false);
+      }
+      
+      // Check 2: Leg not extending enough during kick (knee bent, leg angle < 100°)
+      if (legAngle < 100 && this.repState.frontKick === 'extended') {
+        const legBentStable = this.isFormErrorStable('frontKick.legNotExtended', true);
+        if (legBentStable && this.canGiveFeedback('form')) {
+          this.addFeedback('Extend your leg fully for a proper kick! 🦵', 'error');
+          if (this.sound) this.sound.play('front-kick.form', 'frontKick', { formError: true });
+          this.markFeedbackGiven('form');
+        }
+      } else {
+        this.isFormErrorStable('frontKick.legNotExtended', false);
+        if (this.sound) this.sound.clearFormError('front-kick.form', 'frontKick');
+      }
+    } else {
+      // Clear form errors when not in kicking phase
+      this.isFormErrorStable('frontKick.hipTooNarrow', false);
+      this.isFormErrorStable('frontKick.legNotExtended', false);
+      if (this.sound) this.sound.clearFormError('front-kick.form', 'frontKick');
     }
     
     // send progressive feedback during kick (ONCE per rep at midway point)
