@@ -592,7 +592,7 @@ export class ExerciseDetector {
     if (newStage === 'extended' || newStage === 'extending') {
       // Check 1: Hip angle too narrow (leg raised too high) - causes lower back strain
       // Hip angle < 70° means leg is way too high
-      if (hipAngle < 70) {
+      if (hipAngle < 90) {
         const hipErrorStable = this.isFormErrorStable('frontKick.hipTooNarrow', true);
         if (hipErrorStable && this.canGiveFeedback('form')) {
           this.addFeedback('Don\'t raise your leg too high, protect your lower back! ⚠️', 'error');

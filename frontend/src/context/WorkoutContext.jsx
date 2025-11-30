@@ -346,9 +346,10 @@ export const WorkoutProvider = ({ children }) => {
         negative: isNegative ? prev.negative + 1 : prev.negative
       };
       
-      // Calculate weighted accuracy: positive weight 1.0, negative weight 0.3
-      const totalWeighted = (newCounts.positive * 1.0) + (newCounts.negative * 0.3);
-      const accuracy = totalWeighted > 0 ? Math.round((newCounts.positive * 1.0) / totalWeighted * 100) : 0;
+      // Calculate weighted accuracy: positive weight 1.0, negative weight 0.5
+      // Use simple ratio with decimal precision to prevent reaching 100% after mistakes
+      const totalWeighted = (newCounts.positive * 1.0) + (newCounts.negative * 0.5);
+      const accuracy = totalWeighted > 0 ? parseFloat(((newCounts.positive * 1.0) / totalWeighted * 100).toFixed(1)) : 0;
       
       setPoseAccuracy(accuracy);
       
