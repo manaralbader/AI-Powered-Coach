@@ -24,8 +24,8 @@ body {
   display: flex;
   justify-content: space-between; /* links left, logo right */
   align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(42, 115, 55, 0.1);
 }
 
@@ -492,13 +492,13 @@ ul {
   font-size: 2.5rem;
   font-weight: 700;
   color: #333;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .goals-container > p {
   font-size: 1.1rem;
   color: #666;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 .goal-options {
@@ -569,7 +569,7 @@ ul {
   font-size: 2rem;
   font-weight: 700;
   color: #333;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
 }
 
 .weight-inputs {
@@ -602,7 +602,7 @@ ul {
   font-size: 2rem;
   font-weight: 700;
   color: #333;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
 }
 
 .weight-display {
@@ -759,7 +759,7 @@ ul {
 /* Step 4: Calendar View */
 .calendar-header {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .calendar-header h3 {
@@ -922,20 +922,20 @@ ul {
 
 .dashboard-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
 }
 
 .dashboard-header h1 {
   font-size: 2.5rem;
   font-weight: 700;
   color: #333;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .dashboard-header p {
   font-size: 1.2rem;
   color: #666;
-  margin: 0;
+  margin: 0 0 0.25rem 0;
 }
 
 .dashboard-content {
@@ -1149,14 +1149,14 @@ ul {
 
 .exercise-header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 1rem;
 }
 
 .exercise-header h2 {
   font-size: 2.5rem;
   font-weight: 700;
   color: #333;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .exercise-header p {
@@ -1295,7 +1295,7 @@ ul {
   grid-template-columns: auto 1fr;
   align-items: center;
   gap: 1.25rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   padding: 1rem;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 12px;

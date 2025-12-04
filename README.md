@@ -462,11 +462,11 @@ The system was tested under two conditions: unconstrained (real-world) and const
 
 | Exercise | Accuracy | Precision | Recall | Specificity |
 |----------|----------|-----------|--------|-------------|
-| Squat | 90.0% | 88.5% | 92.5% | 87.5% |
-| Bicep Curl | 85.0% | 82.0% | 91.0% | 79.0% |
-| Front Kick | 80.0% | 78.0% | 85.0% | 75.0% |
-| Overhead Press | 90.5% | 89.0% | 93.0% | 88.0% |
-| Lateral Raise | 85.0% | 83.0% | 90.0% | 80.0% |
+| Squat | 95.0% | 90.9% | 100.0% | 90.0% |
+| Bicep Curl | 85.0% | 81.8% | 90.0% | 80.0% |
+| Front Kick | 80.0% | 72.7% | 88.9% | 72.7% |
+| Overhead Press | 95.2% | 100.0% | 90.0% | 100.0% |
+| Lateral Raise | 100.0% | 100.0% | 100.0% | 100.0% |
 
 #### Constrained Conditions (Optimal Setup)
 
@@ -484,11 +484,11 @@ The system was tested under two conditions: unconstrained (real-world) and const
 
 | Exercise | Accuracy | Precision | Recall | Specificity |
 |----------|----------|-----------|--------|-------------|
-| Squat | 95.0% | 95.5% | 95.0% | 94.5% |
-| Bicep Curl | 93.0% | 93.5% | 93.0% | 93.0% |
-| Front Kick | 91.0% | 92.0% | 91.5% | 90.5% |
-| Overhead Press | 95.5% | 96.0% | 95.5% | 95.5% |
-| Lateral Raise | 93.5% | 94.0% | 93.5% | 93.5% |
+| Squat | 95.0% | 90.9% | 100.0% | 90.0% |
+| Bicep Curl | 90.0% | 83.3% | 100.0% | 80.0% |
+| Front Kick | 90.0% | 100.0% | 80.0% | 100.0% |
+| Overhead Press | 95.2% | 100.0% | 90.0% | 100.0% |
+| Lateral Raise | 100.0% | 100.0% | 100.0% | 100.0% |
 
 ### Performance Analysis
 
@@ -499,6 +499,18 @@ The system was tested under two conditions: unconstrained (real-world) and const
 3. High recall (93.8-94%) means users get proper credit for correct form
 4. Low false positive rate (6-11.5%) ensures reliable feedback
 5. Front kicks are the most challenging exercise to detect (requires fast movement tracking)
+
+**Why Only Bicep Curl and Front Kick Improved:**
+
+Lateral raise, overhead press, and squat already performed excellently (95-100%) in unconstrained conditions, leaving little room for improvement. Bicep curl and front kick were the weakest performers (80-85%) and benefited most from better lighting and camera angles. These exercises involve faster, more complex movements that are harder to track under poor conditions.
+
+**Front Kick: Higher Accuracy but Lower Recall?**
+
+This seems odd at first, but it makes sense. Under constrained conditions, the system became *stricter*:
+- False positives dropped from 3 to 0 (stopped giving false praise for bad form)
+- False negatives increased from 1 to 2 (missed a couple correct forms)
+
+The trade-off: Better at catching mistakes (100% specificity) but slightly more likely to miss good form (80% recall). Overall accuracy improved because eliminating false positives mattered more. This is actually *safer* for users—it's better for the AI to be strict than to let bad form slip through and risk injury.
 
 **Comparison to Industry Standards:**
 
