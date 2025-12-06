@@ -70,14 +70,25 @@ import {
     return onSnapshot(q, (snap) => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
   };
   
-  // Workouts
-  export const addWorkoutLog = async (uid, { exercise, durationMs, reps, calories, accuracy, level }) =>
-    addDoc(collection(db, "workouts"), {
-      userId: uid, exercise: exercise || "Unknown", workoutDate: serverTimestamp(),
-      durationMs: Number(durationMs) || 0, reps: Number(reps) || 0, calories: Number(calories) || 0,
-      accuracy: Number(accuracy) || 0, level: level || "beginner", createdAt: serverTimestamp(),
+    export const addWorkoutLog = async (uid, { exercise, durationMs, reps, calories, accuracy, level, userEmail }) => {
+    let email = userEmail;
+    if (!email) {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      email = userDoc.exists() ? userDoc.data().email : null;
+    }
+    return addDoc(collection(db, "workouts"), {
+      userId: uid, 
+      userEmail: email || '', // Add user email
+      exercise: exercise || "Unknown", 
+      workoutDate: serverTimestamp(),
+      durationMs: Number(durationMs) || 0, 
+      reps: Number(reps) || 0, 
+      calories: Number(calories) || 0,
+      accuracy: Number(accuracy) || 0, 
+      level: level || "beginner", 
+      createdAt: serverTimestamp(),
     });
-  
+  }; 
   export const listenMyWorkouts = (uid, cb, cap = 50) => {
     const q = query(
       collection(db, "workouts"),
