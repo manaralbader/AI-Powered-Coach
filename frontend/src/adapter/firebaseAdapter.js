@@ -51,12 +51,23 @@ import {
       updatedAt: serverTimestamp(), createdAt: serverTimestamp(),
     }, { merge: true });
   
-  export const addWeightEntry = async (uid, { weight, recordedDate }) =>
-    addDoc(collection(db, "weightHistory", uid, "entries"), {
-      weight: Number(weight),
-      recordedDate: recordedDate || new Date().toISOString().slice(0, 10),
-      createdAt: serverTimestamp(),
-    });
+  export const addWeightEntry = async (uid, { weight, recordedDate, userEmail }) => {
+  // First, ensure parent document exists (required for subcollections in Firestore)
+  const parentRef = doc(db, "weightHistory", uid);
+  await setDoc(parentRef, {
+    userId: uid,
+    userEmail: userEmail || '',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  
+  // Now add the entry to the subcollection
+  return addDoc(collection(db, "weightHistory", uid, "entries"), {
+    weight: Number(weight),
+    recordedDate: recordedDate || new Date().toISOString().slice(0, 10),
+    createdAt: serverTimestamp(),
+  });
+};
   
   export const listenGoals = (uid, cb) =>
     onSnapshot(doc(db, "goals", uid), (snap) => cb(snap.exists() ? snap.data() : null));
