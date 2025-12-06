@@ -261,6 +261,13 @@ export const GoalsProvider = ({ children }) => {
     if (isAuthenticated && user?.uid) {
       try {
         console.log('💾 Saving weight entry to Firestore:', { weight: weightValue, date: entryDate, uid: user.uid });
+        const parentRef = doc(db, 'weightHistory', user.uid);
+        await setDoc(parentRef, {
+          userId: user.uid,
+          userEmail: user.email || '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
         await addDoc(collection(db, 'weightHistory', user.uid, 'entries'), {
           weight: weightValue,
           recordedDate: entryDate,
