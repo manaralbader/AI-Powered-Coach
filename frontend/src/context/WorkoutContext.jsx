@@ -244,6 +244,7 @@ export const WorkoutProvider = ({ children }) => {
       try {
         const docRef = await addDoc(collection(db, 'workouts'), {
           userId: currentUser.uid,
+          userEmail: currentUser.email || '',
           exercise: workoutData.exercise,
           workoutDate: serverTimestamp(),
           durationMs: workoutData.duration,
